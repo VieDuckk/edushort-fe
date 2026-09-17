@@ -15,7 +15,8 @@ export default function HomeFeed() {
     data: videosRes,
     isLoading,
     isError,
-  } = useVideosQuery({ page: 1, limit: 20 });
+    refetch,
+  } = useVideosQuery({ page: 1, limit: 20, sort: 'random' });
 
   const videos: TVideo[] = Array.isArray(videosRes)
     ? videosRes
@@ -181,6 +182,12 @@ export default function HomeFeed() {
                   onClick={() => {
                     if (!containerRef.current) return;
                     containerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                    setActiveIndex(0);
+                    if (videos.length > 0) {
+                      setWatchedVideoIds([videos[0].id]);
+                    } else {
+                      setWatchedVideoIds([]);
+                    }
                   }}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-extrabold text-sm rounded-full shadow-lg shadow-purple-500/30 hover:opacity-95 active:scale-95 transition-all"
                 >

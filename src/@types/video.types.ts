@@ -43,6 +43,7 @@ export type TVideoQueryParams = BaseApiParamsType & {
   categoryId?: number;
   status?: EVideoStatus;
   authorId?: number;
+  sort?: "latest" | "oldest" | "popular" | "random";
 };
 
 import { MetadataApiType } from "./common.types";

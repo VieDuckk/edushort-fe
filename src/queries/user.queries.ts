@@ -33,7 +33,6 @@ export function useUserProfileQuery(options?: TUseUserDetailQueryOptions) {
     queryKey: [QUERY_KEYS.AUTH_ME],
     queryFn: () => userApi.getUsers().then((users) => users[0]), // or profile endpoint
     ...options,
-    enabled: options?.enabled ?? false,
   });
 }
 

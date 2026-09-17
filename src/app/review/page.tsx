@@ -31,8 +31,10 @@ interface ReviewItem {
     id: number;
     title: string;
     description?: string;
-    videoUrl: string;
+    videoUrl?: string;
+    videoKey?: string;
     thumbnailUrl?: string;
+    thumbnailKey?: string;
     category?: { name: string };
   };
 }
@@ -119,6 +121,13 @@ export default function ReviewPage() {
                   const correctOpt = item.question?.options?.find(
                     (o: any) => o.isCorrect,
                   );
+                  const thumb =
+                    item.videoToReview?.thumbnailUrl ||
+                    item.videoToReview?.thumbnailKey;
+                  const videoUrl =
+                    item.videoToReview?.videoUrl ||
+                    item.videoToReview?.videoKey;
+
                   return (
                     <div
                       key={item.id}
@@ -160,9 +169,9 @@ export default function ReviewPage() {
                         <div className="bg-gradient-to-r from-pink-50 to-purple-50 border border-purple-100 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-sm">
                           <div className="flex items-center gap-3">
                             <div className="w-16 h-12 rounded-xl bg-slate-900 overflow-hidden shrink-0 relative shadow-sm">
-                              {item.videoToReview.thumbnailUrl ? (
+                              {thumb ? (
                                 <img
-                                  src={item.videoToReview.thumbnailUrl}
+                                  src={thumb}
                                   alt={item.videoToReview.title}
                                   className="w-full h-full object-cover"
                                 />
@@ -222,7 +231,7 @@ export default function ReviewPage() {
               </button>
             </div>
             <video
-              src={activeVideo.videoUrl}
+              src={activeVideo.videoUrl || activeVideo.videoKey}
               controls
               autoPlay
               className="w-full rounded-2xl max-h-[70vh] bg-black shadow-md"

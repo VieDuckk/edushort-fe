@@ -52,7 +52,9 @@ export const QuizPopup: React.FC<QuizPopupProps> = ({
       id: number;
       title: string;
       thumbnailUrl?: string;
+      thumbnailKey?: string;
       videoUrl?: string;
+      videoKey?: string;
       category?: { name: string };
     };
   } | null>(null);
@@ -179,9 +181,9 @@ export const QuizPopup: React.FC<QuizPopupProps> = ({
                     </p>
                     <div className="flex gap-3 bg-white border border-purple-100 rounded-xl p-3 shadow-sm">
                       <div className="w-20 h-14 rounded-lg bg-slate-100 overflow-hidden shrink-0">
-                        {result.videoToReview.thumbnailUrl ? (
+                        {result.videoToReview.thumbnailUrl || result.videoToReview.thumbnailKey ? (
                           <img
-                            src={result.videoToReview.thumbnailUrl}
+                            src={result.videoToReview.thumbnailUrl || result.videoToReview.thumbnailKey}
                             alt={result.videoToReview.title}
                             className="w-full h-full object-cover"
                           />

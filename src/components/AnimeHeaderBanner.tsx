@@ -21,7 +21,7 @@ export const AnimeHeaderBanner: React.FC = () => {
       />
 
       {/* Soft color tint wash for perfect legibility */}
-      <div className="absolute inset-0 bg-gradient-to-r from-sky-200/50 via-purple-100/40 to-pink-200/50 backdrop-blur-[2px] pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-r from-sky-200/50 via-purple-100/40 to-pink-200/50 backdrop-blur-[2px] pointer-events-none" />
 
       {/* Floating sparkles and clouds decoration */}
       <div className="absolute top-2 left-6 text-yellow-400 animate-pulse text-base pointer-events-none drop-shadow">
@@ -38,7 +38,7 @@ export const AnimeHeaderBanner: React.FC = () => {
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
         {/* Left Logo */}
         <Link href="/" className="flex items-center gap-1.5 group shrink-0">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-400 to-purple-600 flex items-center justify-center font-black text-white text-xs shadow-md shadow-pink-500/30 group-hover:scale-110 transition-transform">
+          <div className="w-7 h-7 rounded-xl bg-linear-to-tr from-pink-500 via-rose-400 to-purple-600 flex items-center justify-center font-black text-white text-xs shadow-md shadow-pink-500/30 group-hover:scale-110 transition-transform">
             ✨
           </div>
           <span className="font-black text-sm text-slate-900 tracking-tight hidden xs:inline drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]">

@@ -38,7 +38,6 @@ export function useReviewListQuery(options?: TUseQuizReviewListQueryOptions) {
     queryFn: () => quizApi.getReviewList(),
     staleTime: 30_000,
     ...options,
-    enabled: options?.enabled ?? false,
   });
 }
 
@@ -50,6 +49,5 @@ export function useQuizAnswersQuery(options?: TUseQuizAnswersQueryOptions) {
     queryFn: () => quizApi.getQuizAnswers(),
     staleTime: 30_000,
     ...options,
-    enabled: options?.enabled ?? false,
   });
 }

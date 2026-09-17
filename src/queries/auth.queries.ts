@@ -16,7 +16,6 @@ export function useAuthMeQuery(options?: TUseAuthMeQueryOptions) {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     ...options,
-    enabled: options?.enabled ?? false,
   });
 }
 

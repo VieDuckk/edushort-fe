@@ -57,6 +57,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
         videoRef.current.pause();
         setIsPlaying(false);
       }
+      setHasReportedView(false);
     }
   }, [isActive, video.id, onView, hasReportedView]);
 
