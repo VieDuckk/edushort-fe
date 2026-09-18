@@ -7,6 +7,6 @@ interface TopNavProps {
   watchedCount?: number;
 }
 
-export const TopNav: React.FC<TopNavProps> = () => {
-  return <AnimeHeaderBanner />;
+export const TopNav: React.FC<TopNavProps> = ({ watchedCount }) => {
+  return <AnimeHeaderBanner watchedCount={watchedCount} />;
 };
