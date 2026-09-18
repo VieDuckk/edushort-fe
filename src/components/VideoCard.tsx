@@ -108,12 +108,23 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
       className="h-dvh w-full snap-start snap-always relative overflow-hidden bg-black flex flex-col justify-end select-none"
       onClick={togglePlay}
     >
-      {/* Video */}
+      {/* Blurred background video for seamless atmospheric aspect ratio fit */}
+      <video
+        src={video.videoUrl || video.videoKey}
+        poster={video.thumbnailUrl || video.thumbnailKey || undefined}
+        className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none z-0"
+        aria-hidden="true"
+        muted
+        loop
+        playsInline
+      />
+
+      {/* Main Video — object-contain ensures 100% full video is visible without cropping */}
       <video
         ref={videoRef}
         src={video.videoUrl || video.videoKey}
         poster={video.thumbnailUrl || video.thumbnailKey || undefined}
-        className="absolute inset-0 w-full h-full object-cover z-0"
+        className="relative z-5 w-full h-full object-contain"
         loop
         playsInline
         muted={isMuted}

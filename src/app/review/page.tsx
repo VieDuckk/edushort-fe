@@ -233,7 +233,7 @@ export default function ReviewPage() {
               src={activeVideo.videoUrl || activeVideo.videoKey}
               controls
               autoPlay
-              className="w-full rounded-2xl max-h-[70vh] bg-black shadow-md"
+              className="w-full rounded-2xl max-h-[70vh] bg-black shadow-md object-contain"
             />
           </div>
         </div>

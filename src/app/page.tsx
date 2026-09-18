@@ -79,69 +79,64 @@ export default function HomeFeed() {
   const isAtEnd = activeIndex === videos.length && videos.length > 0;
 
   return (
-    <main className="relative w-full h-dvh bg-slate-950 overflow-hidden flex items-center justify-center select-none">
-      {/* Ambient background glow for desktop */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/30 via-slate-950 to-black pointer-events-none hidden md:block" />
+    <main className="relative w-screen h-dvh bg-black overflow-hidden select-none">
+      {/* TopNav — floats over video */}
+      <TopNav watchedCount={watchedVideoIds.length} />
 
-      {/* Navigation arrows — desktop side panel */}
+      {/* Quiz progress pill */}
+      {!isAtEnd && (
+        <div className="absolute top-[52px] sm:top-[58px] left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-md border border-white/20 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full flex items-center gap-2 text-[11px] sm:text-xs font-bold text-white shadow-xl transition-all animate-fade-in whitespace-nowrap">
+          <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse shrink-0" />
+          <span>
+            Quiz:{" "}
+            <strong className="text-purple-300">
+              {watchedVideoIds.length}/5
+            </strong>{" "}
+            video
+          </span>
+          <div className="flex gap-1 ml-0.5">
+            {[1, 2, 3, 4, 5].map((num) => (
+              <div
+                key={num}
+                className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 ${
+                  num <= watchedVideoIds.length
+                    ? "bg-purple-400 shadow-sm shadow-purple-400/50 scale-110"
+                    : "bg-white/25"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation arrows — visible on desktop */}
       {!isLoading && !isError && videos.length > 0 && (
-        <div className="hidden md:flex absolute right-6 lg:right-16 top-1/2 -translate-y-1/2 z-30 flex-col gap-3">
+        <div className="hidden md:flex absolute right-4 lg:right-6 top-1/2 -translate-y-1/2 z-30 flex-col gap-3">
           <button
             onClick={() => goTo("up")}
             disabled={activeIndex === 0}
-            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-purple-600/80 transition-all active:scale-90 disabled:opacity-20 disabled:pointer-events-none shadow-xl"
+            className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-purple-600/80 transition-all active:scale-90 disabled:opacity-20 disabled:pointer-events-none shadow-xl"
             aria-label="Video trước"
           >
-            <ChevronUp className="w-6 h-6" />
+            <ChevronUp className="w-5 h-5" />
           </button>
           <button
             onClick={() => goTo("down")}
             disabled={activeIndex >= videos.length}
-            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-purple-600/80 transition-all active:scale-90 disabled:opacity-20 disabled:pointer-events-none shadow-xl"
+            className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-purple-600/80 transition-all active:scale-90 disabled:opacity-20 disabled:pointer-events-none shadow-xl"
             aria-label="Video tiếp theo"
           >
-            <ChevronDown className="w-6 h-6" />
+            <ChevronDown className="w-5 h-5" />
           </button>
         </div>
       )}
 
-      {/* Centered Mobile Viewport Frame */}
-      <div className="relative w-full md:max-w-[430px] h-dvh bg-black md:shadow-[0_0_60px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.2)] md:border-x md:border-purple-900/40 overflow-hidden flex flex-col">
-        {/* TopNav — floats over video */}
-        <TopNav watchedCount={watchedVideoIds.length} />
-
-        {/* Quiz progress pill */}
-        {!isAtEnd && (
-          <div className="absolute top-[52px] sm:top-[58px] left-1/2 -translate-x-1/2 z-20 bg-black/60 backdrop-blur-md border border-white/20 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full flex items-center gap-2 text-[11px] sm:text-xs font-bold text-white shadow-xl transition-all animate-fade-in whitespace-nowrap">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse shrink-0" />
-            <span>
-              Quiz:{" "}
-              <strong className="text-purple-300">
-                {watchedVideoIds.length}/5
-              </strong>{" "}
-              video
-            </span>
-            <div className="flex gap-1 ml-0.5">
-              {[1, 2, 3, 4, 5].map((num) => (
-                <div
-                  key={num}
-                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 ${
-                    num <= watchedVideoIds.length
-                      ? "bg-purple-400 shadow-sm shadow-purple-400/50 scale-110"
-                      : "bg-white/25"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Video scroll feed */}
-        <div
-          ref={containerRef}
-          className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
-          onScroll={handleScroll}
-        >
+      {/* Video scroll feed */}
+      <div
+        ref={containerRef}
+        className="h-dvh w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar"
+        onScroll={handleScroll}
+      >
         {isLoading ? (
           <VideoCardSkeleton />
         ) : isError ? (
@@ -203,8 +198,6 @@ export default function HomeFeed() {
             </div>
           </>
         )}
-      </div>
-
       </div>
 
       {/* Quiz popup */}
