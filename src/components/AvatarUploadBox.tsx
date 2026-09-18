@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { UploadCloud, Image as ImageIcon, Trash2, Camera, Link as LinkIcon, Check, RefreshCw } from 'lucide-react';
+import { UploadCloud, Trash2, Camera, Link as LinkIcon, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { userApi } from '@/api/user/user.api';
+
+const R2_PUBLIC_URL = 'https://pub-e0b7abd390d54cafb8cd86056d16848a.r2.dev';
 
 interface AvatarUploadBoxProps {
   value: string;
@@ -27,7 +30,7 @@ export const AvatarUploadBox: React.FC<AvatarUploadBoxProps> = ({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFileChange = (file: File) => {
+  const handleFileChange = async (file: File) => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -41,23 +44,23 @@ export const AvatarUploadBox: React.FC<AvatarUploadBoxProps> = ({
     }
 
     setIsProcessing(true);
-    const reader = new FileReader();
+    try {
+      // Bước 1: Lấy presigned URL từ backend
+      const { url: uploadUrl, key } = await userApi.getAvatarUploadUrl(file.name, file.type);
 
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (result) {
-        onChange(result);
-        toast.success('Đã tải ảnh avatar lên thành công!');
-      }
+      // Bước 2: Upload file trực tiếp lên Cloudflare R2
+      await userApi.uploadAvatarToStorage(uploadUrl, file);
+
+      // Bước 3: Tạo public URL từ key
+      const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+      onChange(publicUrl);
+      toast.success('Đã tải ảnh avatar lên thành công!');
+    } catch (err: any) {
+      console.error('Avatar upload error:', err);
+      toast.error(err?.response?.data?.message || 'Đã xảy ra lỗi khi tải ảnh lên.');
+    } finally {
       setIsProcessing(false);
-    };
-
-    reader.onerror = () => {
-      toast.error('Đã xảy ra lỗi khi đọc file ảnh.');
-      setIsProcessing(false);
-    };
-
-    reader.readAsDataURL(file);
+    }
   };
 
   const onDragOver = (e: React.DragEvent) => {
