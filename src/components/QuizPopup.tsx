@@ -90,8 +90,8 @@ export const QuizPopup: React.FC<QuizPopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-5 animate-fade-in">
-      <div className="w-full max-w-[440px] p-7 rounded-3xl bg-white/95 backdrop-blur-xl border border-purple-100 shadow-2xl shadow-purple-500/20 relative animate-pop-up text-slate-800">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in">
+      <div className="w-full max-w-[420px] max-h-[92vh] overflow-y-auto no-scrollbar p-5 sm:p-7 rounded-3xl bg-white/95 backdrop-blur-xl border border-purple-100 shadow-2xl shadow-purple-500/20 relative animate-pop-up text-slate-800">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">

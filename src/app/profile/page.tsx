@@ -124,10 +124,10 @@ export default function ProfilePage() {
     <main className="h-dvh overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900 flex flex-col">
       <TopNav />
 
-      <div className="flex-1 overflow-y-auto page-scroll mt-14">
-      <div className="max-w-[640px] mx-auto py-6 px-5">
-        {/* Profile Card Header */}
-        <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden">
+      <div className="flex-1 overflow-y-auto page-scroll mt-12 sm:mt-14 pb-8">
+        <div className="max-w-md sm:max-w-2xl mx-auto py-4 sm:py-6 px-3.5 sm:px-5">
+          {/* Profile Card Header */}
+          <div className="p-4 sm:p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-300/30 via-purple-300/30 to-indigo-300/30 rounded-full blur-2xl pointer-events-none" />
 
           <div className="flex flex-col sm:flex-row items-center gap-5">

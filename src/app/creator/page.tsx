@@ -20,7 +20,9 @@ import {
   useCreateQuestionMutation,
   useDeleteQuestionMutation,
   useQuestionsQuery,
+  useUpdateQuestionMutation,
 } from '@/queries/question.queries';
+import { TUpdateOptionRequest } from '@/@types/question.types';
 import {
   PlusCircle,
   Video,
@@ -37,10 +39,13 @@ import {
   FolderPlus,
   Tag,
   X,
+  Pencil,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TabType = 'upload-video' | 'create-quiz' | 'manage-videos' | 'manage-quizzes' | 'manage-categories';
+type TabType = 'upload-video' | 'manage-videos' | 'manage-quizzes' | 'manage-categories';
 
 export default function CreatorPage() {
   const user = useAuthStore((state) => state.state.user);
@@ -109,7 +114,7 @@ export default function CreatorPage() {
     );
   };
 
-  // --- Form 1: Create Video ---
+  // --- Form: Upload Video + (optional) Quiz ---
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDesc, setVideoDesc] = useState('');
   const [videoCategoryId, setVideoCategoryId] = useState<number | ''>('');
@@ -124,7 +129,47 @@ export default function CreatorPage() {
   const [videoSuccessMsg, setVideoSuccessMsg] = useState('');
   const [videoErrMsg, setVideoErrMsg] = useState('');
 
+  // Quiz section trong form upload video
+  const [showQuizSection, setShowQuizSection] = useState(false);
+  const [questionContent, setQuestionContent] = useState('');
+  const [options, setOptions] = useState([
+    { label: 'A', content: '', isCorrect: true },
+    { label: 'B', content: '', isCorrect: false },
+    { label: 'C', content: '', isCorrect: false },
+    { label: 'D', content: '', isCorrect: false },
+  ]);
+
   const createVideoMutation = useCreateVideoMutation();
+  const createQuestionMutation = useCreateQuestionMutation();
+
+  const handleOptionContentChange = (index: number, val: string) => {
+    const updated = [...options];
+    updated[index].content = val;
+    setOptions(updated);
+  };
+
+  const handleSetCorrectOption = (correctIndex: number) => {
+    setOptions(options.map((opt, i) => ({ ...opt, isCorrect: i === correctIndex })));
+  };
+
+  const resetVideoForm = () => {
+    setVideoTitle('');
+    setVideoDesc('');
+    setVideoFile(null);
+    setVideoPreviewUrl('');
+    setThumbnailFile(null);
+    setThumbnailPreviewUrl('');
+    setExternalVideoUrl('');
+    setVideoCategoryId('');
+    setShowQuizSection(false);
+    setQuestionContent('');
+    setOptions([
+      { label: 'A', content: '', isCorrect: true },
+      { label: 'B', content: '', isCorrect: false },
+      { label: 'C', content: '', isCorrect: false },
+      { label: 'D', content: '', isCorrect: false },
+    ]);
+  };
 
   const handleCreateVideo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +185,7 @@ export default function CreatorPage() {
 
     if (useUrlMode) {
       if (!externalVideoUrl.trim()) {
-        const msg = 'Vui lòng nhập đường dẫn URL video (http://... hoặc https://...).';
+        const msg = 'Vui lòng nhập đường dẫn URL video.';
         setVideoErrMsg(msg);
         toast.warning(msg);
         return;
@@ -154,13 +199,29 @@ export default function CreatorPage() {
       }
     }
 
+    // Validate quiz nếu user chọn thêm quiz
+    if (showQuizSection) {
+      if (!questionContent.trim()) {
+        const msg = 'Vui lòng nhập nội dung câu hỏi quiz.';
+        setVideoErrMsg(msg);
+        toast.warning(msg);
+        return;
+      }
+      const emptyOption = options.find((opt) => !opt.content.trim());
+      if (emptyOption) {
+        const msg = `Vui lòng nhập nội dung cho lựa chọn ${emptyOption.label}.`;
+        setVideoErrMsg(msg);
+        toast.warning(msg);
+        return;
+      }
+    }
+
     let finalVideoKey = '';
     let finalThumbnailKey: string | undefined = undefined;
 
     try {
       setIsUploading(true);
 
-      // 1. Upload video file to Cloudflare R2 if file mode selected
       if (!useUrlMode && videoFile) {
         setUploadStatus('Đang khởi tạo tải lên video...');
         finalVideoKey = await uploadFileToStorage(videoFile, 'video', (percent) => {
@@ -170,7 +231,6 @@ export default function CreatorPage() {
         finalVideoKey = externalVideoUrl.trim();
       }
 
-      // 2. Upload thumbnail file to R2 if thumbnail file selected
       if (thumbnailFile) {
         setUploadStatus('Đang tải ảnh thumbnail...');
         finalThumbnailKey = await uploadFileToStorage(thumbnailFile, 'thumbnail');
@@ -178,8 +238,8 @@ export default function CreatorPage() {
 
       setUploadStatus('Đang lưu thông tin bài học...');
 
-      // 3. Create video entry in DB
-      await createVideoMutation.mutateAsync({
+      // Tạo video
+      const createdVideo = await createVideoMutation.mutateAsync({
         title: videoTitle.trim(),
         description: videoDesc.trim() || undefined,
         videoKey: finalVideoKey,
@@ -187,19 +247,30 @@ export default function CreatorPage() {
         categoryId: videoCategoryId ? Number(videoCategoryId) : undefined,
       });
 
-      const msg = 'Đã đăng bài Video thành công!';
+      // Nếu có quiz, tạo quiz gắn với video vừa tạo
+      if (showQuizSection && questionContent.trim()) {
+        setUploadStatus('Đang lưu câu hỏi Quiz...');
+        const categoryId = videoCategoryId ? Number(videoCategoryId) : undefined;
+        if (categoryId) {
+          await createQuestionMutation.mutateAsync({
+            content: questionContent,
+            categoryId,
+            videoId: createdVideo.id,
+            options: options.map((opt) => ({
+              label: opt.label,
+              content: opt.content,
+              isCorrect: opt.isCorrect,
+            })),
+          });
+        }
+      }
+
+      const msg = showQuizSection
+        ? 'Đã đăng Video kèm Quiz thành công!'
+        : 'Đã đăng Video thành công!';
       setVideoSuccessMsg(msg);
       toast.success(msg);
-
-      // Reset form
-      setVideoTitle('');
-      setVideoDesc('');
-      setVideoFile(null);
-      setVideoPreviewUrl('');
-      setThumbnailFile(null);
-      setThumbnailPreviewUrl('');
-      setExternalVideoUrl('');
-      setVideoCategoryId('');
+      resetVideoForm();
       setTimeout(() => setVideoSuccessMsg(''), 4000);
     } catch (err: any) {
       console.error('Create video error:', err);
@@ -212,88 +283,6 @@ export default function CreatorPage() {
     }
   };
 
-  // --- Form 2: Create Question ---
-  const [questionContent, setQuestionContent] = useState('');
-  const [questionCategoryId, setQuestionCategoryId] = useState<number | ''>('');
-  const [options, setOptions] = useState([
-    { label: 'A', content: '', isCorrect: true },
-    { label: 'B', content: '', isCorrect: false },
-    { label: 'C', content: '', isCorrect: false },
-    { label: 'D', content: '', isCorrect: false },
-  ]);
-  const [questionSuccessMsg, setQuestionSuccessMsg] = useState('');
-  const [questionErrMsg, setQuestionErrMsg] = useState('');
-
-  const createQuestionMutation = useCreateQuestionMutation();
-
-  const handleOptionContentChange = (index: number, val: string) => {
-    const updated = [...options];
-    updated[index].content = val;
-    setOptions(updated);
-  };
-
-  const handleSetCorrectOption = (correctIndex: number) => {
-    setOptions(options.map((opt, i) => ({ ...opt, isCorrect: i === correctIndex })));
-  };
-
-  const handleCreateQuestion = (e: React.FormEvent) => {
-    e.preventDefault();
-    setQuestionSuccessMsg('');
-    setQuestionErrMsg('');
-
-    if (!questionContent.trim()) {
-      const msg = 'Vui lòng nhập nội dung câu hỏi.';
-      setQuestionErrMsg(msg);
-      toast.warning(msg);
-      return;
-    }
-    if (!questionCategoryId) {
-      const msg = 'Vui lòng chọn danh mục cho câu hỏi.';
-      setQuestionErrMsg(msg);
-      toast.warning(msg);
-      return;
-    }
-    const emptyOption = options.find((opt) => !opt.content.trim());
-    if (emptyOption) {
-      const msg = `Vui lòng nhập nội dung cho lựa chọn ${emptyOption.label}.`;
-      setQuestionErrMsg(msg);
-      toast.warning(msg);
-      return;
-    }
-
-    createQuestionMutation.mutate(
-      {
-        content: questionContent,
-        categoryId: Number(questionCategoryId),
-        options: options.map((opt) => ({
-          label: opt.label,
-          content: opt.content,
-          isCorrect: opt.isCorrect,
-        })),
-      },
-      {
-        onSuccess: () => {
-          const msg = 'Tạo câu hỏi Quiz thành công!';
-          setQuestionSuccessMsg(msg);
-          toast.success(msg);
-          setQuestionContent('');
-          setOptions([
-            { label: 'A', content: '', isCorrect: true },
-            { label: 'B', content: '', isCorrect: false },
-            { label: 'C', content: '', isCorrect: false },
-            { label: 'D', content: '', isCorrect: false },
-          ]);
-          setTimeout(() => setQuestionSuccessMsg(''), 4000);
-        },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.message || err?.message || 'Tạo câu hỏi thất bại';
-          setQuestionErrMsg(msg);
-          toast.error(msg);
-        },
-      }
-    );
-  };
-
   // --- Manage List Data ---
   const { data: videosData } = useVideosQuery({ limit: 50 });
   const rawVideos = Array.isArray(videosData) ? videosData : videosData?.data || [];
@@ -301,6 +290,7 @@ export default function CreatorPage() {
 
   const deleteVideoMutation = useDeleteVideoMutation();
   const deleteQuestionMutation = useDeleteQuestionMutation();
+  const updateQuestionMutation = useUpdateQuestionMutation();
 
   const handleDeleteVideo = (id: number) => {
     deleteVideoMutation.mutate(id, {
@@ -316,7 +306,77 @@ export default function CreatorPage() {
     });
   };
 
-  // Category dropdown with quick-create inline widget
+  // --- Inline Edit Quiz State ---
+  const [editingQuizId, setEditingQuizId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editOptions, setEditOptions] = useState<{ id: number; label: string; content: string; isCorrect: boolean }[]>([]);
+
+  const startEditQuiz = (q: typeof questionsData[0]) => {
+    setEditingQuizId(q.id);
+    setEditContent(q.content);
+    setEditOptions(
+      (q.options || []).map((opt) => ({
+        id: opt.id,
+        label: opt.label,
+        content: opt.content,
+        isCorrect: opt.isCorrect ?? false,
+      }))
+    );
+  };
+
+  const cancelEditQuiz = () => {
+    setEditingQuizId(null);
+    setEditContent('');
+    setEditOptions([]);
+  };
+
+  const handleSaveQuiz = (questionId: number) => {
+    if (!editContent.trim()) {
+      toast.warning('Nội dung câu hỏi không được để trống.');
+      return;
+    }
+    const correctCount = editOptions.filter((o) => o.isCorrect).length;
+    if (correctCount !== 1) {
+      toast.warning('Phải chọn đúng 1 đáp án đúng.');
+      return;
+    }
+    const emptyOpt = editOptions.find((o) => !o.content.trim());
+    if (emptyOpt) {
+      toast.warning(`Lựa chọn ${emptyOpt.label} không được để trống.`);
+      return;
+    }
+
+    const updatedOptions: TUpdateOptionRequest[] = editOptions.map((o) => ({
+      id: o.id,
+      content: o.content,
+      isCorrect: o.isCorrect,
+    }));
+
+    updateQuestionMutation.mutate(
+      {
+        id: questionId,
+        data: {
+          content: editContent,
+          options: updatedOptions,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success('Đã cập nhật câu hỏi Quiz!');
+          cancelEditQuiz();
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || 'Cập nhật câu hỏi thất bại');
+        },
+      }
+    );
+  };
+
+  const handleSetEditCorrect = (idx: number) => {
+    setEditOptions(editOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
+  };
+
+  // --- Category Select Widget ---
   const CategorySelect = ({
     value,
     onChange,
@@ -355,7 +415,7 @@ export default function CreatorPage() {
       </div>
 
       {showQuickCategory && (
-        <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-2xl animate-slide-up">
+        <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-2xl">
           <Tag className="w-4 h-4 text-purple-500 shrink-0" />
           <input
             type="text"
@@ -424,18 +484,17 @@ export default function CreatorPage() {
     <main className="h-dvh overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900 flex flex-col">
       <TopNav />
 
-      {/* Scrollable content area below TopNav */}
-      <div className="flex-1 overflow-y-auto page-scroll mt-14">
-        <div className="max-w-[720px] mx-auto py-6 px-5">
+      <div className="flex-1 overflow-y-auto page-scroll mt-12 sm:mt-14 pb-12">
+        <div className="max-w-md sm:max-w-3xl mx-auto py-4 sm:py-6 px-3.5 sm:px-5">
           {/* Header Badge */}
-          <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden flex items-center justify-between">
+          <div className="p-4 sm:p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden flex items-center justify-between">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-400/20 via-purple-400/20 to-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-700 text-sm font-extrabold mb-2">
-                <Sparkles className="w-4 h-4 text-purple-600" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-700 text-xs sm:text-sm font-extrabold mb-1.5">
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600" />
                 Creator Studio (Admin)
               </div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Quản Lý &amp; Đăng Bài Nội Dung
               </h1>
             </div>
@@ -448,10 +507,9 @@ export default function CreatorPage() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex gap-2 p-1.5 rounded-2xl bg-white/80 border border-purple-100 backdrop-blur-md shadow-sm mb-6 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-purple-100 backdrop-blur-md shadow-sm mb-6 overflow-x-auto no-scrollbar">
             {([
               { key: 'upload-video', label: 'Đăng Video', Icon: Video },
-              { key: 'create-quiz', label: 'Tạo Quiz', Icon: HelpCircle },
               { key: 'manage-videos', label: `Video (${rawVideos.length})`, Icon: Film },
               { key: 'manage-quizzes', label: `Quiz (${questionsData.length})`, Icon: List },
               { key: 'manage-categories', label: `Danh Mục (${categories.length})`, Icon: FolderPlus },
@@ -459,7 +517,7 @@ export default function CreatorPage() {
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-extrabold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all whitespace-nowrap ${
                   activeTab === key
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md shadow-pink-500/20'
                     : 'text-slate-600 hover:text-purple-600 hover:bg-purple-50/60'
@@ -471,7 +529,7 @@ export default function CreatorPage() {
             ))}
           </div>
 
-          {/* TAB 1: Upload Video Form */}
+          {/* TAB 1: Upload Video + (optional) Quiz */}
           {activeTab === 'upload-video' && (
             <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
               <h2 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
@@ -527,7 +585,7 @@ export default function CreatorPage() {
                   <CategorySelect value={videoCategoryId} onChange={setVideoCategoryId} />
                 </div>
 
-                {/* Source Selection Toggle: File vs URL */}
+                {/* Source Selection Toggle */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-extrabold text-slate-800">
@@ -538,9 +596,7 @@ export default function CreatorPage() {
                         type="button"
                         onClick={() => setUseUrlMode(false)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                          !useUrlMode
-                            ? 'bg-purple-600 text-white shadow-sm'
-                            : 'text-slate-600 hover:text-purple-600'
+                          !useUrlMode ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-600 hover:text-purple-600'
                         }`}
                       >
                         📁 Tải tệp từ máy
@@ -549,9 +605,7 @@ export default function CreatorPage() {
                         type="button"
                         onClick={() => setUseUrlMode(true)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                          useUrlMode
-                            ? 'bg-purple-600 text-white shadow-sm'
-                            : 'text-slate-600 hover:text-purple-600'
+                          useUrlMode ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-600 hover:text-purple-600'
                         }`}
                       >
                         🔗 Dán URL trực tiếp
@@ -587,7 +641,7 @@ export default function CreatorPage() {
                   )}
                 </div>
 
-                {/* Thumbnail upload box */}
+                {/* Thumbnail */}
                 <VideoUploadBox
                   label="Ảnh Thumbnail (xem trước)"
                   accept="image/*"
@@ -596,6 +650,81 @@ export default function CreatorPage() {
                   onChange={(file, url) => { setThumbnailFile(file); setThumbnailPreviewUrl(url); }}
                   isUploading={isUploading}
                 />
+
+                {/* ---- Quiz section (collapsible) ---- */}
+                <div className="rounded-2xl border border-purple-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuizSection(!showQuizSection)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-purple-50/60 hover:bg-purple-100/60 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
+                      <HelpCircle className="w-4 h-4 text-purple-500" />
+                      Thêm câu hỏi Quiz cho video này
+                      <span className="text-xs font-medium text-slate-400">(tùy chọn)</span>
+                    </span>
+                    {showQuizSection
+                      ? <ChevronUp className="w-4 h-4 text-purple-500" />
+                      : <ChevronDown className="w-4 h-4 text-purple-500" />
+                    }
+                  </button>
+
+                  {showQuizSection && (
+                    <div className="p-4 space-y-4 bg-white/50">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                          Nội dung câu hỏi <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          value={questionContent}
+                          onChange={(e) => setQuestionContent(e.target.value)}
+                          placeholder="VD: Lực nào giữ Trái Đất quay xung quanh Mặt Trời theo Định luật Newton?"
+                          rows={3}
+                          className="w-full px-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-semibold resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <label className="block text-xs font-extrabold text-slate-800">
+                          Các lựa chọn (Bấm ô tròn để đặt đáp án ĐÚNG):
+                        </label>
+                        {options.map((opt, idx) => (
+                          <div
+                            key={opt.label}
+                            className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${
+                              opt.isCorrect
+                                ? 'bg-emerald-50/80 border-emerald-300 shadow-sm'
+                                : 'bg-white/60 border-purple-100'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSetCorrectOption(idx)}
+                              className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 transition-all ${
+                                opt.isCorrect
+                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-purple-100'
+                              }`}
+                              title={opt.isCorrect ? 'Đáp án ĐÚNG' : 'Bấm để chọn làm đáp án ĐÚNG'}
+                            >
+                              {opt.isCorrect ? <Check className="w-4 h-4" /> : opt.label}
+                            </button>
+                            <input
+                              type="text"
+                              value={opt.content}
+                              onChange={(e) => handleOptionContentChange(idx, e.target.value)}
+                              placeholder={`Nội dung lựa chọn ${opt.label}...`}
+                              className="flex-1 px-3 py-1.5 bg-transparent border-0 text-slate-800 text-sm focus:outline-none font-medium"
+                            />
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? 'text-emerald-700 bg-emerald-100' : 'text-slate-400'}`}>
+                              {opt.isCorrect ? 'ĐÚNG ✅' : 'Sai'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {isUploading && (
                   <div className="p-3 bg-purple-50 border border-purple-200 rounded-2xl animate-pulse">
@@ -611,108 +740,19 @@ export default function CreatorPage() {
                   className="w-full py-3.5 mt-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-2xl text-white font-extrabold text-sm shadow-lg shadow-pink-500/25 hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  {isUploading ? (uploadStatus || 'Đang tải lên Cloudflare R2...') : createVideoMutation.isPending ? 'Đang xuất bản...' : 'Đăng tải Video'}
+                  {isUploading
+                    ? (uploadStatus || 'Đang tải lên Cloudflare R2...')
+                    : createVideoMutation.isPending
+                    ? 'Đang xuất bản...'
+                    : showQuizSection
+                    ? 'Đăng Video + Quiz'
+                    : 'Đăng tải Video'}
                 </button>
               </form>
             </div>
           )}
 
-          {/* TAB 2: Create Quiz Question Form */}
-          {activeTab === 'create-quiz' && (
-            <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
-              <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-purple-600" />
-                Tạo Câu Hỏi Trắc Nghiệm (Quiz)
-              </h2>
-
-              {questionSuccessMsg && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-4 text-xs font-bold text-emerald-700 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                  {questionSuccessMsg}
-                </div>
-              )}
-              {questionErrMsg && (
-                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 mb-4 text-xs font-bold text-rose-600 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                  {questionErrMsg}
-                </div>
-              )}
-
-              <form onSubmit={handleCreateQuestion} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Chọn Môn Học / Danh mục <span className="text-rose-500">*</span>
-                  </label>
-                  <CategorySelect value={questionCategoryId} onChange={setQuestionCategoryId} required />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Nội dung câu hỏi <span className="text-rose-500">*</span>
-                  </label>
-                  <textarea
-                    value={questionContent}
-                    onChange={(e) => setQuestionContent(e.target.value)}
-                    placeholder="VD: Lực nào giữ Trái Đất quay xung quanh Mặt Trời theo Định luật Newton?"
-                    rows={3}
-                    className="w-full px-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-semibold resize-none"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2.5 pt-2">
-                  <label className="block text-xs font-extrabold text-slate-800">
-                    Các lựa chọn trả lời (Bấm ô tròn để chọn đáp án ĐÚNG):
-                  </label>
-                  {options.map((opt, idx) => (
-                    <div
-                      key={opt.label}
-                      className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${
-                        opt.isCorrect
-                          ? 'bg-emerald-50/80 border-emerald-300 shadow-sm'
-                          : 'bg-white/60 border-purple-100'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSetCorrectOption(idx)}
-                        className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 transition-all ${
-                          opt.isCorrect
-                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                            : 'bg-slate-100 text-slate-600 hover:bg-purple-100'
-                        }`}
-                        title={opt.isCorrect ? 'Đáp án ĐÚNG' : 'Bấm để chọn làm đáp án ĐÚNG'}
-                      >
-                        {opt.isCorrect ? <Check className="w-4 h-4" /> : opt.label}
-                      </button>
-                      <input
-                        type="text"
-                        value={opt.content}
-                        onChange={(e) => handleOptionContentChange(idx, e.target.value)}
-                        placeholder={`Nội dung lựa chọn ${opt.label}...`}
-                        className="flex-1 px-3 py-1.5 bg-transparent border-0 text-slate-800 text-sm focus:outline-none font-medium"
-                        required
-                      />
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? 'text-emerald-700 bg-emerald-100' : 'text-slate-400'}`}>
-                        {opt.isCorrect ? 'ĐÚNG ✅' : 'Sai'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={createQuestionMutation.isPending}
-                  className="w-full py-3.5 mt-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-2xl text-white font-extrabold text-sm shadow-lg shadow-pink-500/25 hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  {createQuestionMutation.isPending ? 'Đang tạo...' : 'Lưu Câu Hỏi Quiz'}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* TAB 3: Manage Videos */}
+          {/* TAB 2: Manage Videos */}
           {activeTab === 'manage-videos' && (
             <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
               <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
@@ -769,7 +809,7 @@ export default function CreatorPage() {
             </div>
           )}
 
-          {/* TAB 4: Manage Quizzes */}
+          {/* TAB 3: Manage Quizzes */}
           {activeTab === 'manage-quizzes' && (
             <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
               <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
@@ -787,42 +827,140 @@ export default function CreatorPage() {
                   {questionsData.map((q) => (
                     <div
                       key={q.id}
-                      className="p-4 rounded-2xl bg-purple-50/30 border border-purple-100 flex items-start justify-between gap-3 hover:bg-white transition-all shadow-sm"
+                      className="rounded-2xl bg-purple-50/30 border border-purple-100 overflow-hidden transition-all shadow-sm hover:shadow-md"
                     >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2">
-                          {q.category && (
-                            <span className="text-xs font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
-                              {q.category.name}
-                            </span>
-                          )}
-                          <span className="text-[11px] font-bold text-slate-400">ID: #{q.id}</span>
-                        </div>
-                        <p className="text-xs font-extrabold text-slate-900">{q.content}</p>
-                        <div className="grid grid-cols-2 gap-1.5 pt-1">
-                          {q.options?.map((opt) => (
-                            <div
-                              key={opt.id || opt.label}
-                              className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium ${
-                                opt.isCorrect
-                                  ? 'bg-emerald-100/70 border-emerald-300 font-extrabold text-emerald-800'
-                                  : 'bg-white/80 border-slate-200 text-slate-600'
-                              }`}
+                      {editingQuizId === q.id ? (
+                        /* ---- Inline Edit Form ---- */
+                        <div className="p-4 space-y-3 bg-white">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Pencil className="w-4 h-4 text-purple-600" />
+                            <span className="text-xs font-extrabold text-purple-700 uppercase tracking-wide">Đang chỉnh sửa</span>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">
+                              Nội dung câu hỏi
+                            </label>
+                            <textarea
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              rows={2}
+                              className="w-full px-3 py-2 bg-purple-50/40 border border-purple-200 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-semibold resize-none"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="block text-xs font-extrabold text-slate-800">
+                              Đáp án (Bấm ô tròn để đặt ĐÚNG):
+                            </label>
+                            {editOptions.map((opt, idx) => (
+                              <div
+                                key={opt.id}
+                                className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                                  opt.isCorrect
+                                    ? 'bg-emerald-50/80 border-emerald-300'
+                                    : 'bg-white/60 border-purple-100'
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetEditCorrect(idx)}
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold shrink-0 transition-all ${
+                                    opt.isCorrect
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-purple-100'
+                                  }`}
+                                >
+                                  {opt.isCorrect ? <Check className="w-4 h-4" /> : opt.label}
+                                </button>
+                                <input
+                                  type="text"
+                                  value={opt.content}
+                                  onChange={(e) => {
+                                    const next = [...editOptions];
+                                    next[idx] = { ...next[idx], content: e.target.value };
+                                    setEditOptions(next);
+                                  }}
+                                  className="flex-1 px-2 py-1 bg-transparent border-0 text-slate-800 text-sm focus:outline-none font-medium"
+                                />
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? 'text-emerald-700 bg-emerald-100' : 'text-slate-400'}`}>
+                                  {opt.isCorrect ? 'ĐÚNG ✅' : 'Sai'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleSaveQuiz(q.id)}
+                              disabled={updateQuestionMutation.isPending}
+                              className="flex-1 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/20 hover:opacity-95 transition-all disabled:opacity-50"
                             >
-                              <span className="font-bold mr-1">{opt.label}:</span>
-                              {opt.content}
-                            </div>
-                          ))}
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              {updateQuestionMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+                            </button>
+                            <button
+                              onClick={cancelEditQuiz}
+                              className="px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-200 transition-all"
+                            >
+                              Hủy
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteQuestion(q.id)}
-                        disabled={deleteQuestionMutation.isPending}
-                        className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
-                        title="Xóa câu hỏi"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      ) : (
+                        /* ---- Display View ---- */
+                        <div className="p-4 flex items-start justify-between gap-3">
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {q.category && (
+                                <span className="text-xs font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md">
+                                  {q.category.name}
+                                </span>
+                              )}
+                              {(q as any).video && (
+                                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <Film className="w-3 h-3" />
+                                  {(q as any).video.title}
+                                </span>
+                              )}
+                              <span className="text-[11px] font-bold text-slate-400">ID: #{q.id}</span>
+                            </div>
+                            <p className="text-xs font-extrabold text-slate-900">{q.content}</p>
+                            <div className="grid grid-cols-2 gap-1.5 pt-1">
+                              {q.options?.map((opt) => (
+                                <div
+                                  key={opt.id || opt.label}
+                                  className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium ${
+                                    opt.isCorrect
+                                      ? 'bg-emerald-100/70 border-emerald-300 font-extrabold text-emerald-800'
+                                      : 'bg-white/80 border-slate-200 text-slate-600'
+                                  }`}
+                                >
+                                  <span className="font-bold mr-1">{opt.label}:</span>
+                                  {opt.content}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button
+                              onClick={() => startEditQuiz(q)}
+                              className="p-2 rounded-xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                              title="Sửa câu hỏi"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQuestion(q.id)}
+                              disabled={deleteQuestionMutation.isPending}
+                              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Xóa câu hỏi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -830,7 +968,7 @@ export default function CreatorPage() {
             </div>
           )}
 
-          {/* TAB 5: Manage Categories */}
+          {/* TAB 4: Manage Categories */}
           {activeTab === 'manage-categories' && (
             <div className="space-y-5">
               {/* Create category form */}

@@ -13,12 +13,7 @@ interface AvatarUploadBoxProps {
   defaultAvatars?: string[];
 }
 
-const DEFAULT_PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
-];
+const DEFAULT_PRESET_AVATARS: string[] = [];
 
 export const AvatarUploadBox: React.FC<AvatarUploadBoxProps> = ({
   value,
@@ -212,28 +207,30 @@ export const AvatarUploadBox: React.FC<AvatarUploadBoxProps> = ({
         </div>
       )}
 
-      {/* Preset Suggestions */}
-      <div className="pt-1">
-        <label className="block text-[11px] font-extrabold text-slate-500 mb-2 flex items-center gap-1">
-          <Camera className="w-3.5 h-3.5 text-purple-500" /> Gợi ý mẫu Avatar nhanh:
-        </label>
-        <div className="flex gap-2.5">
-          {defaultAvatars.map((url, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => onChange(url)}
-              className={`w-11 h-11 rounded-2xl overflow-hidden border-2 transition-all ${
-                value === url
-                  ? 'border-purple-600 scale-110 shadow-md shadow-purple-500/20'
-                  : 'border-purple-100 hover:border-purple-300 opacity-80 hover:opacity-100'
-              }`}
-            >
-              <img src={url} alt={`Avatar preset ${idx + 1}`} className="w-full h-full object-cover" />
-            </button>
-          ))}
+      {/* Preset Suggestions — only shown if presets exist */}
+      {defaultAvatars.length > 0 && (
+        <div className="pt-1">
+          <label className="block text-[11px] font-extrabold text-slate-500 mb-2 flex items-center gap-1">
+            <Camera className="w-3.5 h-3.5 text-purple-500" /> Gợi ý mẫu Avatar nhanh:
+          </label>
+          <div className="flex gap-2.5">
+            {defaultAvatars.map((url, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onChange(url)}
+                className={`w-11 h-11 rounded-2xl overflow-hidden border-2 transition-all ${
+                  value === url
+                    ? 'border-purple-600 scale-110 shadow-md shadow-purple-500/20'
+                    : 'border-purple-100 hover:border-purple-300 opacity-80 hover:opacity-100'
+                }`}
+              >
+                <img src={url} alt={`Avatar preset ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

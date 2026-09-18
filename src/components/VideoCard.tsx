@@ -30,7 +30,7 @@ interface VideoCardProps {
 export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(Math.floor(video.views / 2) + 12);
   const [hasReportedView, setHasReportedView] = useState(false);
@@ -199,9 +199,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
         {/* Creator handle */}
         <div className="flex items-center gap-2 mb-1.5">
           <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow-sm">
-            ES
+            {((video as any).author?.name || (video as any).author?.username || 'ES').substring(0, 2).toUpperCase()}
           </div>
-          <span className="text-sm font-extrabold text-white drop-shadow">@EduShort</span>
+          <span className="text-sm font-extrabold text-white drop-shadow">
+            @{(video as any).author?.username || 'EduShort'}
+          </span>
         </div>
 
         {/* Title */}

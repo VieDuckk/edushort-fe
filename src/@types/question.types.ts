@@ -13,6 +13,8 @@ export type TQuestion = TBaseRecord<{
   content: string;
   categoryId: number;
   category?: TCategory;
+  videoId?: number | null;
+  video?: { id: number; title: string; thumbnailKey?: string | null } | null;
   options: TQuestionOption[];
 }>;
 
@@ -25,10 +27,22 @@ export type TCreateQuestionOptionRequest = {
 export type TCreateQuestionRequest = {
   content: string;
   categoryId: number;
+  videoId?: number;
   options: TCreateQuestionOptionRequest[];
 };
 
-export type TUpdateQuestionRequest = Partial<TCreateQuestionRequest>;
+export type TUpdateOptionRequest = {
+  id: number;
+  content?: string;
+  isCorrect?: boolean;
+};
+
+export type TUpdateQuestionRequest = {
+  content?: string;
+  categoryId?: number;
+  videoId?: number;
+  options?: TUpdateOptionRequest[];
+};
 
 export type TGetQuestionResponse = TQuestion;
 export type TGetQuestionsResponse = TQuestion[];

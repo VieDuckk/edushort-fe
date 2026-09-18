@@ -51,23 +51,22 @@ export default function ReviewPage() {
     <main className="h-dvh overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900 flex flex-col">
       <TopNav />
 
-      <div className="flex-1 overflow-y-auto page-scroll mt-14">
-      <div className="max-w-[640px] mx-auto py-6 px-5">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-pink-500/30">
-            <BookOpen className="w-6 h-6" />
+      <div className="flex-1 overflow-y-auto page-scroll mt-12 sm:mt-14 pb-8">
+        <div className="max-w-md sm:max-w-2xl mx-auto py-4 sm:py-6 px-3.5 sm:px-5">
+          {/* Header */}
+          <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 shrink-0">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                Góc Ôn Tập Kiến Thức
+              </h1>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                Danh sách các câu hỏi bạn trả lời chưa đúng & video bài học cần xem lại
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-extrabold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Góc Ôn Tập Kiến Thức
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Danh sách các câu hỏi bạn trả lời chưa đúng & video bài học cần
-              xem lại
-            </p>
-          </div>
-        </div>
 
         {/* Not Logged In */}
         {!user && ready && (

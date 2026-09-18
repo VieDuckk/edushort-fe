@@ -41,8 +41,8 @@ export default function RegisterPage() {
     <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900">
       <TopNav />
 
-      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-5 pt-20">
-        <div className="w-full max-w-sm p-8 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-2xl shadow-purple-500/10">
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-3.5 sm:p-5 pt-16 sm:pt-20 pb-10">
+        <div className="w-full max-w-xs sm:max-w-sm p-6 sm:p-8 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-2xl shadow-purple-500/10">
           <div className="text-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-pink-500/30">
               <UserPlus className="w-7 h-7" />
@@ -90,7 +90,7 @@ export default function RegisterPage() {
                   minLength={3}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="vietduc2003"
+                  placeholder="edulearner99"
                   className="w-full pl-10 pr-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-medium"
                 />
                 <UserIcon className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
