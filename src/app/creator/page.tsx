@@ -1,28 +1,29 @@
-'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { TopNav } from '@/components/TopNav';
-import { VideoUploadBox } from '@/components/VideoUploadBox';
-import { useAuthStore } from '@/state/auth';
-import { uploadFileToStorage } from '@/api/video/video.api';
+import React, { useState } from "react";
+import Link from "next/link";
+import { TopNav } from "@/components/TopNav";
+import { VideoUploadBox } from "@/components/VideoUploadBox";
+import { useAuthStore } from "@/state/auth";
+import { uploadFileToStorage } from "@/api/video/video.api";
 import {
   useCategoriesQuery,
   useCreateCategoryMutation,
   useDeleteCategoryMutation,
-} from '@/queries/category.queries';
+} from "@/queries/category.queries";
 import {
   useCreateVideoMutation,
   useDeleteVideoMutation,
   useVideosQuery,
-} from '@/queries/video.queries';
+} from "@/queries/video.queries";
 import {
   useCreateQuestionMutation,
   useDeleteQuestionMutation,
   useQuestionsQuery,
   useUpdateQuestionMutation,
-} from '@/queries/question.queries';
-import { TUpdateOptionRequest } from '@/@types/question.types';
+} from "@/queries/question.queries";
+import { TUpdateOptionRequest } from "@/@types/question.types";
 import {
   PlusCircle,
   Video,
@@ -42,16 +43,135 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react';
-import { toast } from 'sonner';
+} from "lucide-react";
+import { toast } from "sonner";
 
-type TabType = 'upload-video' | 'manage-videos' | 'manage-quizzes' | 'manage-categories';
+type TabType =
+  | "upload-video"
+  | "manage-videos"
+  | "manage-quizzes"
+  | "manage-categories";
+
+// --- Category Select Widget ---
+interface CategorySelectProps {
+  categories: any[];
+  value: number | "";
+  onChange: (v: number | "") => void;
+  required?: boolean;
+}
+
+function CategorySelect({
+  categories,
+  value,
+  onChange,
+  required,
+}: CategorySelectProps) {
+  const [showQuickCategory, setShowQuickCategory] = useState(false);
+  const [quickCatName, setQuickCatName] = useState("");
+  const createCategoryMutation = useCreateCategoryMutation();
+
+  const handleQuickCreateCategory = () => {
+    if (!quickCatName.trim()) {
+      toast.warning("Vui lòng nhập tên danh mục.");
+      return;
+    }
+    const slug = quickCatName
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    createCategoryMutation.mutate(
+      { name: quickCatName.trim(), slug },
+      {
+        onSuccess: () => {
+          toast.success(`Đã tạo danh mục "${quickCatName.trim()}"!`);
+          setQuickCatName("");
+          setShowQuickCategory(false);
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || "Tạo danh mục thất bại");
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={value}
+          onChange={(e) =>
+            onChange(e.target.value ? Number(e.target.value) : "")
+          }
+          className="flex-1 px-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-medium"
+          required={required}
+        >
+          <option value="">-- Chọn danh mục --</option>
+          {categories.map((cat: any) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => setShowQuickCategory(!showQuickCategory)}
+          className={`flex items-center gap-1 px-3 py-3 rounded-2xl border text-xs font-extrabold transition-all whitespace-nowrap ${
+            showQuickCategory
+              ? "bg-purple-600 text-white border-purple-600"
+              : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+          }`}
+          title="Tạo danh mục mới nhanh"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Tạo mới</span>
+        </button>
+      </div>
+
+      {showQuickCategory && (
+        <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-2xl">
+          <Tag className="w-4 h-4 text-purple-500 shrink-0" />
+          <input
+            type="text"
+            value={quickCatName}
+            onChange={(e) => setQuickCatName(e.target.value)}
+            onKeyDown={(e) =>
+              e.key === "Enter" &&
+              (e.preventDefault(), handleQuickCreateCategory())
+            }
+            placeholder="Tên danh mục mới..."
+            className="flex-1 bg-transparent border-0 text-sm text-slate-800 focus:outline-none font-semibold"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={handleQuickCreateCategory}
+            disabled={createCategoryMutation.isPending}
+            className="p-1.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowQuickCategory(false);
+              setQuickCatName("");
+            }}
+            className="p-1.5 rounded-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CreatorPage() {
   const user = useAuthStore((state) => state.state.user);
   const ready = useAuthStore((state) => state.state.ready);
 
-  const [activeTab, setActiveTab] = useState<TabType>('upload-video');
+  const [activeTab, setActiveTab] = useState<TabType>("upload-video");
 
   // Categories
   const { data: categories = [] } = useCategoriesQuery();
@@ -59,84 +179,68 @@ export default function CreatorPage() {
   const deleteCategoryMutation = useDeleteCategoryMutation();
 
   // Category management state
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategorySlug, setNewCategorySlug] = useState('');
-  const [showQuickCategory, setShowQuickCategory] = useState(false);
-  const [quickCatName, setQuickCatName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategorySlug, setNewCategorySlug] = useState("");
 
   const handleCreateCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) {
-      toast.warning('Vui lòng nhập tên danh mục.');
+      toast.warning("Vui lòng nhập tên danh mục.");
       return;
     }
-    const slug = newCategorySlug.trim() || newCategoryName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug =
+      newCategorySlug.trim() ||
+      newCategoryName
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
     createCategoryMutation.mutate(
       { name: newCategoryName.trim(), slug },
       {
         onSuccess: () => {
           toast.success(`Đã tạo danh mục "${newCategoryName.trim()}"!`);
-          setNewCategoryName('');
-          setNewCategorySlug('');
+          setNewCategoryName("");
+          setNewCategorySlug("");
         },
         onError: (err: any) => {
-          toast.error(err?.response?.data?.message || 'Tạo danh mục thất bại');
+          toast.error(err?.response?.data?.message || "Tạo danh mục thất bại");
         },
-      }
+      },
     );
   };
 
   const handleDeleteCategory = (id: number, name: string) => {
     deleteCategoryMutation.mutate(id, {
       onSuccess: () => toast.success(`Đã xóa danh mục "${name}"`),
-      onError: (err: any) => toast.error(err?.response?.data?.message || 'Xóa danh mục thất bại'),
+      onError: (err: any) =>
+        toast.error(err?.response?.data?.message || "Xóa danh mục thất bại"),
     });
   };
 
-  const handleQuickCreateCategory = () => {
-    if (!quickCatName.trim()) {
-      toast.warning('Vui lòng nhập tên danh mục.');
-      return;
-    }
-    const slug = quickCatName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    createCategoryMutation.mutate(
-      { name: quickCatName.trim(), slug },
-      {
-        onSuccess: () => {
-          toast.success(`Đã tạo danh mục "${quickCatName.trim()}"!`);
-          setQuickCatName('');
-          setShowQuickCategory(false);
-        },
-        onError: (err: any) => {
-          toast.error(err?.response?.data?.message || 'Tạo danh mục thất bại');
-        },
-      }
-    );
-  };
-
   // --- Form: Upload Video + (optional) Quiz ---
-  const [videoTitle, setVideoTitle] = useState('');
-  const [videoDesc, setVideoDesc] = useState('');
-  const [videoCategoryId, setVideoCategoryId] = useState<number | ''>('');
+  const [videoTitle, setVideoTitle] = useState("");
+  const [videoDesc, setVideoDesc] = useState("");
+  const [videoCategoryId, setVideoCategoryId] = useState<number | "">("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState('');
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState("");
   const [useUrlMode, setUseUrlMode] = useState(false);
-  const [externalVideoUrl, setExternalVideoUrl] = useState('');
+  const [externalVideoUrl, setExternalVideoUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
-  const [videoSuccessMsg, setVideoSuccessMsg] = useState('');
-  const [videoErrMsg, setVideoErrMsg] = useState('');
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [videoSuccessMsg, setVideoSuccessMsg] = useState("");
+  const [videoErrMsg, setVideoErrMsg] = useState("");
 
   // Quiz section trong form upload video
   const [showQuizSection, setShowQuizSection] = useState(false);
-  const [questionContent, setQuestionContent] = useState('');
+  const [questionContent, setQuestionContent] = useState("");
   const [options, setOptions] = useState([
-    { label: 'A', content: '', isCorrect: true },
-    { label: 'B', content: '', isCorrect: false },
-    { label: 'C', content: '', isCorrect: false },
-    { label: 'D', content: '', isCorrect: false },
+    { label: "A", content: "", isCorrect: true },
+    { label: "B", content: "", isCorrect: false },
+    { label: "C", content: "", isCorrect: false },
+    { label: "D", content: "", isCorrect: false },
   ]);
 
   const createVideoMutation = useCreateVideoMutation();
@@ -149,35 +253,37 @@ export default function CreatorPage() {
   };
 
   const handleSetCorrectOption = (correctIndex: number) => {
-    setOptions(options.map((opt, i) => ({ ...opt, isCorrect: i === correctIndex })));
+    setOptions(
+      options.map((opt, i) => ({ ...opt, isCorrect: i === correctIndex })),
+    );
   };
 
   const resetVideoForm = () => {
-    setVideoTitle('');
-    setVideoDesc('');
+    setVideoTitle("");
+    setVideoDesc("");
     setVideoFile(null);
-    setVideoPreviewUrl('');
+    setVideoPreviewUrl("");
     setThumbnailFile(null);
-    setThumbnailPreviewUrl('');
-    setExternalVideoUrl('');
-    setVideoCategoryId('');
+    setThumbnailPreviewUrl("");
+    setExternalVideoUrl("");
+    setVideoCategoryId("");
     setShowQuizSection(false);
-    setQuestionContent('');
+    setQuestionContent("");
     setOptions([
-      { label: 'A', content: '', isCorrect: true },
-      { label: 'B', content: '', isCorrect: false },
-      { label: 'C', content: '', isCorrect: false },
-      { label: 'D', content: '', isCorrect: false },
+      { label: "A", content: "", isCorrect: true },
+      { label: "B", content: "", isCorrect: false },
+      { label: "C", content: "", isCorrect: false },
+      { label: "D", content: "", isCorrect: false },
     ]);
   };
 
   const handleCreateVideo = async (e: React.FormEvent) => {
     e.preventDefault();
-    setVideoSuccessMsg('');
-    setVideoErrMsg('');
+    setVideoSuccessMsg("");
+    setVideoErrMsg("");
 
     if (!videoTitle.trim()) {
-      const msg = 'Vui lòng nhập tiêu đề video.';
+      const msg = "Vui lòng nhập tiêu đề video.";
       setVideoErrMsg(msg);
       toast.warning(msg);
       return;
@@ -185,14 +291,14 @@ export default function CreatorPage() {
 
     if (useUrlMode) {
       if (!externalVideoUrl.trim()) {
-        const msg = 'Vui lòng nhập đường dẫn URL video.';
+        const msg = "Vui lòng nhập đường dẫn URL video.";
         setVideoErrMsg(msg);
         toast.warning(msg);
         return;
       }
     } else {
       if (!videoFile) {
-        const msg = 'Vui lòng chọn tệp video để tải lên.';
+        const msg = "Vui lòng chọn tệp video để tải lên.";
         setVideoErrMsg(msg);
         toast.warning(msg);
         return;
@@ -202,7 +308,7 @@ export default function CreatorPage() {
     // Validate quiz nếu user chọn thêm quiz
     if (showQuizSection) {
       if (!questionContent.trim()) {
-        const msg = 'Vui lòng nhập nội dung câu hỏi quiz.';
+        const msg = "Vui lòng nhập nội dung câu hỏi quiz.";
         setVideoErrMsg(msg);
         toast.warning(msg);
         return;
@@ -216,27 +322,34 @@ export default function CreatorPage() {
       }
     }
 
-    let finalVideoKey = '';
+    let finalVideoKey = "";
     let finalThumbnailKey: string | undefined = undefined;
 
     try {
       setIsUploading(true);
 
       if (!useUrlMode && videoFile) {
-        setUploadStatus('Đang khởi tạo tải lên video...');
-        finalVideoKey = await uploadFileToStorage(videoFile, 'video', (percent) => {
-          setUploadStatus(`Đang tải video lên R2: ${percent}%`);
-        });
+        setUploadStatus("Đang khởi tạo tải lên video...");
+        finalVideoKey = await uploadFileToStorage(
+          videoFile,
+          "video",
+          (percent) => {
+            setUploadStatus(`Đang tải video lên R2: ${percent}%`);
+          },
+        );
       } else {
         finalVideoKey = externalVideoUrl.trim();
       }
 
       if (thumbnailFile) {
-        setUploadStatus('Đang tải ảnh thumbnail...');
-        finalThumbnailKey = await uploadFileToStorage(thumbnailFile, 'thumbnail');
+        setUploadStatus("Đang tải ảnh thumbnail...");
+        finalThumbnailKey = await uploadFileToStorage(
+          thumbnailFile,
+          "thumbnail",
+        );
       }
 
-      setUploadStatus('Đang lưu thông tin bài học...');
+      setUploadStatus("Đang lưu thông tin bài học...");
 
       // Tạo video
       const createdVideo = await createVideoMutation.mutateAsync({
@@ -249,8 +362,10 @@ export default function CreatorPage() {
 
       // Nếu có quiz, tạo quiz gắn với video vừa tạo
       if (showQuizSection && questionContent.trim()) {
-        setUploadStatus('Đang lưu câu hỏi Quiz...');
-        const categoryId = videoCategoryId ? Number(videoCategoryId) : undefined;
+        setUploadStatus("Đang lưu câu hỏi Quiz...");
+        const categoryId = videoCategoryId
+          ? Number(videoCategoryId)
+          : undefined;
         if (categoryId) {
           await createQuestionMutation.mutateAsync({
             content: questionContent,
@@ -266,26 +381,31 @@ export default function CreatorPage() {
       }
 
       const msg = showQuizSection
-        ? 'Đã đăng Video kèm Quiz thành công!'
-        : 'Đã đăng Video thành công!';
+        ? "Đã đăng Video kèm Quiz thành công!"
+        : "Đã đăng Video thành công!";
       setVideoSuccessMsg(msg);
       toast.success(msg);
       resetVideoForm();
-      setTimeout(() => setVideoSuccessMsg(''), 4000);
+      setTimeout(() => setVideoSuccessMsg(""), 4000);
     } catch (err: any) {
-      console.error('Create video error:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Tải video thất bại. Vui lòng thử lại!';
+      console.error("Create video error:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Tải video thất bại. Vui lòng thử lại!";
       setVideoErrMsg(msg);
       toast.error(msg);
     } finally {
       setIsUploading(false);
-      setUploadStatus('');
+      setUploadStatus("");
     }
   };
 
   // --- Manage List Data ---
   const { data: videosData } = useVideosQuery({ limit: 50 });
-  const rawVideos = Array.isArray(videosData) ? videosData : videosData?.data || [];
+  const rawVideos = Array.isArray(videosData)
+    ? videosData
+    : videosData?.data || [];
   const { data: questionsData = [] } = useQuestionsQuery();
 
   const deleteVideoMutation = useDeleteVideoMutation();
@@ -294,24 +414,28 @@ export default function CreatorPage() {
 
   const handleDeleteVideo = (id: number) => {
     deleteVideoMutation.mutate(id, {
-      onSuccess: () => toast.success('Đã xóa video thành công'),
-      onError: (err: any) => toast.error(err?.response?.data?.message || 'Xóa video thất bại'),
+      onSuccess: () => toast.success("Đã xóa video thành công"),
+      onError: (err: any) =>
+        toast.error(err?.response?.data?.message || "Xóa video thất bại"),
     });
   };
 
   const handleDeleteQuestion = (id: number) => {
     deleteQuestionMutation.mutate(id, {
-      onSuccess: () => toast.success('Đã xóa câu hỏi Quiz thành công'),
-      onError: (err: any) => toast.error(err?.response?.data?.message || 'Xóa câu hỏi thất bại'),
+      onSuccess: () => toast.success("Đã xóa câu hỏi Quiz thành công"),
+      onError: (err: any) =>
+        toast.error(err?.response?.data?.message || "Xóa câu hỏi thất bại"),
     });
   };
 
   // --- Inline Edit Quiz State ---
   const [editingQuizId, setEditingQuizId] = useState<number | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const [editOptions, setEditOptions] = useState<{ id: number; label: string; content: string; isCorrect: boolean }[]>([]);
+  const [editContent, setEditContent] = useState("");
+  const [editOptions, setEditOptions] = useState<
+    { id: number; label: string; content: string; isCorrect: boolean }[]
+  >([]);
 
-  const startEditQuiz = (q: typeof questionsData[0]) => {
+  const startEditQuiz = (q: (typeof questionsData)[0]) => {
     setEditingQuizId(q.id);
     setEditContent(q.content);
     setEditOptions(
@@ -320,24 +444,24 @@ export default function CreatorPage() {
         label: opt.label,
         content: opt.content,
         isCorrect: opt.isCorrect ?? false,
-      }))
+      })),
     );
   };
 
   const cancelEditQuiz = () => {
     setEditingQuizId(null);
-    setEditContent('');
+    setEditContent("");
     setEditOptions([]);
   };
 
   const handleSaveQuiz = (questionId: number) => {
     if (!editContent.trim()) {
-      toast.warning('Nội dung câu hỏi không được để trống.');
+      toast.warning("Nội dung câu hỏi không được để trống.");
       return;
     }
     const correctCount = editOptions.filter((o) => o.isCorrect).length;
     if (correctCount !== 1) {
-      toast.warning('Phải chọn đúng 1 đáp án đúng.');
+      toast.warning("Phải chọn đúng 1 đáp án đúng.");
       return;
     }
     const emptyOpt = editOptions.find((o) => !o.content.trim());
@@ -362,13 +486,15 @@ export default function CreatorPage() {
       },
       {
         onSuccess: () => {
-          toast.success('Đã cập nhật câu hỏi Quiz!');
+          toast.success("Đã cập nhật câu hỏi Quiz!");
           cancelEditQuiz();
         },
         onError: (err: any) => {
-          toast.error(err?.response?.data?.message || 'Cập nhật câu hỏi thất bại');
+          toast.error(
+            err?.response?.data?.message || "Cập nhật câu hỏi thất bại",
+          );
         },
-      }
+      },
     );
   };
 
@@ -376,97 +502,32 @@ export default function CreatorPage() {
     setEditOptions(editOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
   };
 
-  // --- Category Select Widget ---
-  const CategorySelect = ({
-    value,
-    onChange,
-    required,
-  }: {
-    value: number | '';
-    onChange: (v: number | '') => void;
-    required?: boolean;
-  }) => (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
-          className="flex-1 px-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-medium"
-          required={required}
-        >
-          <option value="">-- Chọn danh mục --</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={() => setShowQuickCategory(!showQuickCategory)}
-          className={`flex items-center gap-1 px-3 py-3 rounded-2xl border text-xs font-extrabold transition-all whitespace-nowrap ${
-            showQuickCategory
-              ? 'bg-purple-600 text-white border-purple-600'
-              : 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
-          }`}
-          title="Tạo danh mục mới nhanh"
-        >
-          <FolderPlus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Tạo mới</span>
-        </button>
-      </div>
-
-      {showQuickCategory && (
-        <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-2xl">
-          <Tag className="w-4 h-4 text-purple-500 shrink-0" />
-          <input
-            type="text"
-            value={quickCatName}
-            onChange={(e) => setQuickCatName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleQuickCreateCategory())}
-            placeholder="Tên danh mục mới..."
-            className="flex-1 bg-transparent border-0 text-sm text-slate-800 focus:outline-none font-semibold"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={handleQuickCreateCategory}
-            disabled={createCategoryMutation.isPending}
-            className="p-1.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors"
-          >
-            <Check className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowQuickCategory(false); setQuickCatName(''); }}
-            className="p-1.5 rounded-xl bg-slate-200 text-slate-600 hover:bg-slate-300 transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   if (!ready) {
     return (
       <main className="h-dvh overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900">
         <TopNav />
         <div className="h-full flex items-center justify-center">
-          <p className="text-purple-600 font-bold text-sm">Đang tải Studio...</p>
+          <p className="text-purple-600 font-bold text-sm">
+            Đang tải Studio...
+          </p>
         </div>
       </main>
     );
   }
 
-  if (!user || user.role !== 'OWNER') {
+  if (!user || user.role !== "OWNER") {
     return (
       <main className="h-dvh overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-sky-50 text-slate-900">
         <TopNav />
         <div className="h-full flex items-center justify-center px-5">
           <div className="p-8 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl text-center shadow-xl shadow-purple-500/10 max-w-sm w-full">
             <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-            <h3 className="text-lg font-extrabold text-slate-900 mb-2">Không có quyền truy cập</h3>
+            <h3 className="text-lg font-extrabold text-slate-900 mb-2">
+              Không có quyền truy cập
+            </h3>
             <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto mb-6">
-              Trang Creator Studio chỉ dành cho tài khoản có quyền Quản trị (OWNER).
+              Trang Creator Studio chỉ dành cho tài khoản có quyền Quản trị
+              (OWNER).
             </p>
             <Link
               href="/"
@@ -487,7 +548,7 @@ export default function CreatorPage() {
       <div className="flex-1 overflow-y-auto page-scroll mt-12 sm:mt-14 pb-12">
         <div className="max-w-md sm:max-w-3xl mx-auto py-4 sm:py-6 px-3.5 sm:px-5">
           {/* Header Badge */}
-          <div className="p-4 sm:p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden flex items-center justify-between">
+          <div className="p-4 sm:p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10 mb-6 relative overflow-hidden flex items-center flex-col sm:flex-row justify-between">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-400/20 via-purple-400/20 to-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-700 text-xs sm:text-sm font-extrabold mb-1.5">
@@ -500,7 +561,7 @@ export default function CreatorPage() {
             </div>
             <Link
               href="/profile"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-purple-600 bg-white border border-purple-100 px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all"
+              className="inline-flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-purple-600 bg-white border border-purple-100 px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all"
             >
               Trang cá nhân
             </Link>
@@ -508,19 +569,33 @@ export default function CreatorPage() {
 
           {/* Navigation Tabs */}
           <div className="flex gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-purple-100 backdrop-blur-md shadow-sm mb-6 overflow-x-auto no-scrollbar">
-            {([
-              { key: 'upload-video', label: 'Đăng Video', Icon: Video },
-              { key: 'manage-videos', label: `Video (${rawVideos.length})`, Icon: Film },
-              { key: 'manage-quizzes', label: `Quiz (${questionsData.length})`, Icon: List },
-              { key: 'manage-categories', label: `Danh Mục (${categories.length})`, Icon: FolderPlus },
-            ] as { key: TabType; label: string; Icon: React.ElementType }[]).map(({ key, label, Icon }) => (
+            {(
+              [
+                { key: "upload-video", label: "Đăng Video", Icon: Video },
+                {
+                  key: "manage-videos",
+                  label: `Video (${rawVideos.length})`,
+                  Icon: Film,
+                },
+                {
+                  key: "manage-quizzes",
+                  label: `Quiz (${questionsData.length})`,
+                  Icon: List,
+                },
+                {
+                  key: "manage-categories",
+                  label: `Danh Mục (${categories.length})`,
+                  Icon: FolderPlus,
+                },
+              ] as { key: TabType; label: string; Icon: React.ElementType }[]
+            ).map(({ key, label, Icon }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all whitespace-nowrap ${
                   activeTab === key
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md shadow-pink-500/20'
-                    : 'text-slate-600 hover:text-purple-600 hover:bg-purple-50/60'
+                    ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md shadow-pink-500/20"
+                    : "text-slate-600 hover:text-purple-600 hover:bg-purple-50/60"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -530,8 +605,8 @@ export default function CreatorPage() {
           </div>
 
           {/* TAB 1: Upload Video + (optional) Quiz */}
-          {activeTab === 'upload-video' && (
-            <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
+          {activeTab === "upload-video" && (
+            <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl flex flex-col shadow-xl shadow-purple-500/10">
               <h2 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
                 <Video className="w-6 h-6 text-pink-500" />
                 Đăng tải Video Bài Học Mới
@@ -582,7 +657,11 @@ export default function CreatorPage() {
                   <label className="block text-sm font-extrabold text-slate-800 mb-1.5">
                     Danh mục bài học
                   </label>
-                  <CategorySelect value={videoCategoryId} onChange={setVideoCategoryId} />
+                  <CategorySelect
+                    categories={categories}
+                    value={videoCategoryId}
+                    onChange={setVideoCategoryId}
+                  />
                 </div>
 
                 {/* Source Selection Toggle */}
@@ -596,7 +675,9 @@ export default function CreatorPage() {
                         type="button"
                         onClick={() => setUseUrlMode(false)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                          !useUrlMode ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-600 hover:text-purple-600'
+                          !useUrlMode
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-slate-600 hover:text-purple-600"
                         }`}
                       >
                         📁 Tải tệp từ máy
@@ -605,7 +686,9 @@ export default function CreatorPage() {
                         type="button"
                         onClick={() => setUseUrlMode(true)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                          useUrlMode ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-600 hover:text-purple-600'
+                          useUrlMode
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-slate-600 hover:text-purple-600"
                         }`}
                       >
                         🔗 Dán URL trực tiếp
@@ -619,7 +702,10 @@ export default function CreatorPage() {
                       accept="video/*"
                       value={videoFile}
                       previewUrl={videoPreviewUrl}
-                      onChange={(file, url) => { setVideoFile(file); setVideoPreviewUrl(url); }}
+                      onChange={(file, url) => {
+                        setVideoFile(file);
+                        setVideoPreviewUrl(url);
+                      }}
                       isUploading={isUploading}
                       uploadProgress={uploadStatus}
                       required
@@ -635,7 +721,8 @@ export default function CreatorPage() {
                         required
                       />
                       <p className="text-xs font-medium text-slate-500 mt-1">
-                        Dán đường dẫn URL kết thúc bằng .mp4, .webm hoặc từ CDN ngoài.
+                        Dán đường dẫn URL kết thúc bằng .mp4, .webm hoặc từ CDN
+                        ngoài.
                       </p>
                     </div>
                   )}
@@ -647,7 +734,10 @@ export default function CreatorPage() {
                   accept="image/*"
                   value={thumbnailFile}
                   previewUrl={thumbnailPreviewUrl}
-                  onChange={(file, url) => { setThumbnailFile(file); setThumbnailPreviewUrl(url); }}
+                  onChange={(file, url) => {
+                    setThumbnailFile(file);
+                    setThumbnailPreviewUrl(url);
+                  }}
                   isUploading={isUploading}
                 />
 
@@ -661,19 +751,23 @@ export default function CreatorPage() {
                     <span className="flex items-center gap-2 text-sm font-extrabold text-purple-700">
                       <HelpCircle className="w-4 h-4 text-purple-500" />
                       Thêm câu hỏi Quiz cho video này
-                      <span className="text-xs font-medium text-slate-400">(tùy chọn)</span>
+                      <span className="text-xs font-medium text-slate-400">
+                        (tùy chọn)
+                      </span>
                     </span>
-                    {showQuizSection
-                      ? <ChevronUp className="w-4 h-4 text-purple-500" />
-                      : <ChevronDown className="w-4 h-4 text-purple-500" />
-                    }
+                    {showQuizSection ? (
+                      <ChevronUp className="w-4 h-4 text-purple-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-purple-500" />
+                    )}
                   </button>
 
                   {showQuizSection && (
                     <div className="p-4 space-y-4 bg-white/50">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                          Nội dung câu hỏi <span className="text-rose-500">*</span>
+                          Nội dung câu hỏi{" "}
+                          <span className="text-rose-500">*</span>
                         </label>
                         <textarea
                           value={questionContent}
@@ -693,8 +787,8 @@ export default function CreatorPage() {
                             key={opt.label}
                             className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-all ${
                               opt.isCorrect
-                                ? 'bg-emerald-50/80 border-emerald-300 shadow-sm'
-                                : 'bg-white/60 border-purple-100'
+                                ? "bg-emerald-50/80 border-emerald-300 shadow-sm"
+                                : "bg-white/60 border-purple-100"
                             }`}
                           >
                             <button
@@ -702,22 +796,34 @@ export default function CreatorPage() {
                               onClick={() => handleSetCorrectOption(idx)}
                               className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 transition-all ${
                                 opt.isCorrect
-                                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-purple-100'
+                                  ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
+                                  : "bg-slate-100 text-slate-600 hover:bg-purple-100"
                               }`}
-                              title={opt.isCorrect ? 'Đáp án ĐÚNG' : 'Bấm để chọn làm đáp án ĐÚNG'}
+                              title={
+                                opt.isCorrect
+                                  ? "Đáp án ĐÚNG"
+                                  : "Bấm để chọn làm đáp án ĐÚNG"
+                              }
                             >
-                              {opt.isCorrect ? <Check className="w-4 h-4" /> : opt.label}
+                              {opt.isCorrect ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                opt.label
+                              )}
                             </button>
                             <input
                               type="text"
                               value={opt.content}
-                              onChange={(e) => handleOptionContentChange(idx, e.target.value)}
+                              onChange={(e) =>
+                                handleOptionContentChange(idx, e.target.value)
+                              }
                               placeholder={`Nội dung lựa chọn ${opt.label}...`}
                               className="flex-1 px-3 py-1.5 bg-transparent border-0 text-slate-800 text-sm focus:outline-none font-medium"
                             />
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? 'text-emerald-700 bg-emerald-100' : 'text-slate-400'}`}>
-                              {opt.isCorrect ? 'ĐÚNG ✅' : 'Sai'}
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? "text-emerald-700 bg-emerald-100" : "text-slate-400"}`}
+                            >
+                              {opt.isCorrect ? "ĐÚNG ✅" : "Sai"}
                             </span>
                           </div>
                         ))}
@@ -729,7 +835,7 @@ export default function CreatorPage() {
                 {isUploading && (
                   <div className="p-3 bg-purple-50 border border-purple-200 rounded-2xl animate-pulse">
                     <p className="text-xs font-bold text-purple-700 text-center">
-                      ⚡ {uploadStatus || 'Đang xử lý tải lên...'}
+                      ⚡ {uploadStatus || "Đang xử lý tải lên..."}
                     </p>
                   </div>
                 )}
@@ -741,19 +847,19 @@ export default function CreatorPage() {
                 >
                   <PlusCircle className="w-4 h-4" />
                   {isUploading
-                    ? (uploadStatus || 'Đang tải lên Cloudflare R2...')
+                    ? uploadStatus || "Đang tải lên Cloudflare R2..."
                     : createVideoMutation.isPending
-                    ? 'Đang xuất bản...'
-                    : showQuizSection
-                    ? 'Đăng Video + Quiz'
-                    : 'Đăng tải Video'}
+                      ? "Đang xuất bản..."
+                      : showQuizSection
+                        ? "Đăng Video + Quiz"
+                        : "Đăng tải Video"}
                 </button>
               </form>
             </div>
           )}
 
           {/* TAB 2: Manage Videos */}
-          {activeTab === 'manage-videos' && (
+          {activeTab === "manage-videos" && (
             <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
               <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
                 <Film className="w-5 h-5 text-pink-500" />
@@ -775,7 +881,11 @@ export default function CreatorPage() {
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-14 h-14 rounded-xl bg-slate-200 overflow-hidden shrink-0 border border-purple-100">
                           {vid.thumbnailUrl || vid.thumbnailKey ? (
-                            <img src={vid.thumbnailUrl || vid.thumbnailKey!} alt={vid.title} className="w-full h-full object-cover" />
+                            <img
+                              src={vid.thumbnailUrl || vid.thumbnailKey!}
+                              alt={vid.title}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-purple-400 font-bold text-xs">
                               <Film className="w-5 h-5 opacity-40" />
@@ -783,7 +893,9 @@ export default function CreatorPage() {
                           )}
                         </div>
                         <div className="overflow-hidden">
-                          <h4 className="text-xs font-extrabold text-slate-900 truncate">{vid.title}</h4>
+                          <h4 className="text-xs font-extrabold text-slate-900 truncate">
+                            {vid.title}
+                          </h4>
                           <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 mt-1">
                             {vid.category && (
                               <span className="text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100">
@@ -810,7 +922,7 @@ export default function CreatorPage() {
           )}
 
           {/* TAB 3: Manage Quizzes */}
-          {activeTab === 'manage-quizzes' && (
+          {activeTab === "manage-quizzes" && (
             <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
               <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
                 <List className="w-5 h-5 text-purple-600" />
@@ -834,7 +946,9 @@ export default function CreatorPage() {
                         <div className="p-4 space-y-3 bg-white">
                           <div className="flex items-center gap-2 mb-1">
                             <Pencil className="w-4 h-4 text-purple-600" />
-                            <span className="text-xs font-extrabold text-purple-700 uppercase tracking-wide">Đang chỉnh sửa</span>
+                            <span className="text-xs font-extrabold text-purple-700 uppercase tracking-wide">
+                              Đang chỉnh sửa
+                            </span>
                           </div>
 
                           <div>
@@ -858,8 +972,8 @@ export default function CreatorPage() {
                                 key={opt.id}
                                 className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
                                   opt.isCorrect
-                                    ? 'bg-emerald-50/80 border-emerald-300'
-                                    : 'bg-white/60 border-purple-100'
+                                    ? "bg-emerald-50/80 border-emerald-300"
+                                    : "bg-white/60 border-purple-100"
                                 }`}
                               >
                                 <button
@@ -867,24 +981,33 @@ export default function CreatorPage() {
                                   onClick={() => handleSetEditCorrect(idx)}
                                   className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold shrink-0 transition-all ${
                                     opt.isCorrect
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-slate-100 text-slate-600 hover:bg-purple-100'
+                                      ? "bg-emerald-500 text-white"
+                                      : "bg-slate-100 text-slate-600 hover:bg-purple-100"
                                   }`}
                                 >
-                                  {opt.isCorrect ? <Check className="w-4 h-4" /> : opt.label}
+                                  {opt.isCorrect ? (
+                                    <Check className="w-4 h-4" />
+                                  ) : (
+                                    opt.label
+                                  )}
                                 </button>
                                 <input
                                   type="text"
                                   value={opt.content}
                                   onChange={(e) => {
                                     const next = [...editOptions];
-                                    next[idx] = { ...next[idx], content: e.target.value };
+                                    next[idx] = {
+                                      ...next[idx],
+                                      content: e.target.value,
+                                    };
                                     setEditOptions(next);
                                   }}
                                   className="flex-1 px-2 py-1 bg-transparent border-0 text-slate-800 text-sm focus:outline-none font-medium"
                                 />
-                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? 'text-emerald-700 bg-emerald-100' : 'text-slate-400'}`}>
-                                  {opt.isCorrect ? 'ĐÚNG ✅' : 'Sai'}
+                                <span
+                                  className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${opt.isCorrect ? "text-emerald-700 bg-emerald-100" : "text-slate-400"}`}
+                                >
+                                  {opt.isCorrect ? "ĐÚNG ✅" : "Sai"}
                                 </span>
                               </div>
                             ))}
@@ -897,7 +1020,9 @@ export default function CreatorPage() {
                               className="flex-1 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-pink-500/20 hover:opacity-95 transition-all disabled:opacity-50"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              {updateQuestionMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+                              {updateQuestionMutation.isPending
+                                ? "Đang lưu..."
+                                : "Lưu thay đổi"}
                             </button>
                             <button
                               onClick={cancelEditQuiz}
@@ -923,20 +1048,26 @@ export default function CreatorPage() {
                                   {(q as any).video.title}
                                 </span>
                               )}
-                              <span className="text-[11px] font-bold text-slate-400">ID: #{q.id}</span>
+                              <span className="text-[11px] font-bold text-slate-400">
+                                ID: #{q.id}
+                              </span>
                             </div>
-                            <p className="text-xs font-extrabold text-slate-900">{q.content}</p>
+                            <p className="text-xs font-extrabold text-slate-900">
+                              {q.content}
+                            </p>
                             <div className="grid grid-cols-2 gap-1.5 pt-1">
                               {q.options?.map((opt) => (
                                 <div
                                   key={opt.id || opt.label}
                                   className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium ${
                                     opt.isCorrect
-                                      ? 'bg-emerald-100/70 border-emerald-300 font-extrabold text-emerald-800'
-                                      : 'bg-white/80 border-slate-200 text-slate-600'
+                                      ? "bg-emerald-100/70 border-emerald-300 font-extrabold text-emerald-800"
+                                      : "bg-white/80 border-slate-200 text-slate-600"
                                   }`}
                                 >
-                                  <span className="font-bold mr-1">{opt.label}:</span>
+                                  <span className="font-bold mr-1">
+                                    {opt.label}:
+                                  </span>
                                   {opt.content}
                                 </div>
                               ))}
@@ -969,7 +1100,7 @@ export default function CreatorPage() {
           )}
 
           {/* TAB 4: Manage Categories */}
-          {activeTab === 'manage-categories' && (
+          {activeTab === "manage-categories" && (
             <div className="space-y-5">
               {/* Create category form */}
               <div className="p-6 rounded-3xl bg-white/90 border border-purple-100 backdrop-blur-xl shadow-xl shadow-purple-500/10">
@@ -987,7 +1118,12 @@ export default function CreatorPage() {
                       value={newCategoryName}
                       onChange={(e) => {
                         setNewCategoryName(e.target.value);
-                        setNewCategorySlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+                        setNewCategorySlug(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/\s+/g, "-")
+                            .replace(/[^a-z0-9-]/g, ""),
+                        );
                       }}
                       placeholder="VD: Vật Lý, Toán Học, Hóa Học..."
                       className="w-full px-4 py-3 bg-purple-50/40 border border-purple-100 rounded-2xl text-slate-800 text-sm focus:outline-none focus:border-purple-400 focus:bg-white transition-all font-semibold"
@@ -1012,7 +1148,9 @@ export default function CreatorPage() {
                     className="w-full py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-2xl text-white font-extrabold text-sm shadow-lg shadow-pink-500/25 hover:opacity-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    {createCategoryMutation.isPending ? 'Đang tạo...' : 'Tạo Danh Mục'}
+                    {createCategoryMutation.isPending
+                      ? "Đang tạo..."
+                      : "Tạo Danh Mục"}
                   </button>
                 </form>
               </div>
@@ -1041,8 +1179,12 @@ export default function CreatorPage() {
                             <Tag className="w-3.5 h-3.5 text-purple-600" />
                           </div>
                           <div>
-                            <div className="text-sm font-extrabold text-slate-900">{cat.name}</div>
-                            <div className="text-[11px] font-mono text-slate-400">/{cat.slug}</div>
+                            <div className="text-sm font-extrabold text-slate-900">
+                              {cat.name}
+                            </div>
+                            <div className="text-[11px] font-mono text-slate-400">
+                              /{cat.slug}
+                            </div>
                           </div>
                         </div>
                         <button

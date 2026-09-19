@@ -1,9 +1,19 @@
-'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Play, Heart, Volume2, VolumeX, Tag, Eye, Music2, Pause } from 'lucide-react';
-import { videoApi } from '@/api/video/video.api';
-import { TVideo } from '@/@types/video.types';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import {
+  Play,
+  Heart,
+  Volume2,
+  VolumeX,
+  Tag,
+  Eye,
+  Music2,
+  Pause,
+} from "lucide-react";
+import { videoApi } from "@/api/video/video.api";
+import { TVideo } from "@/@types/video.types";
 
 export interface VideoItem {
   id: number;
@@ -27,7 +37,11 @@ interface VideoCardProps {
   onView: (videoId: number) => void;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView }) => {
+export const VideoCard: React.FC<VideoCardProps> = ({
+  video,
+  isActive,
+  onView,
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -48,7 +62,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
           .catch(() => setIsPlaying(false));
       }
       if (!hasReportedView) {
-        setHasReportedView(true);
         onView(video.id);
         videoApi.increaseVideoView(video.id).catch(() => {});
       }
@@ -57,7 +70,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
         videoRef.current.pause();
         setIsPlaying(false);
       }
-      setHasReportedView(false);
+      // setHasReportedView(false);
     }
   }, [isActive, video.id, onView, hasReportedView]);
 
@@ -138,10 +151,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
       {showPlayPause && (
         <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
           <div className="w-20 h-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center animate-pop-up">
-            {isPlaying
-              ? <Play className="w-9 h-9 fill-white text-white ml-1" />
-              : <Pause className="w-9 h-9 fill-white text-white" />
-            }
+            {isPlaying ? (
+              <Play className="w-9 h-9 fill-white text-white ml-1" />
+            ) : (
+              <Pause className="w-9 h-9 fill-white text-white" />
+            )}
           </div>
         </div>
       )}
@@ -152,24 +166,30 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
         <div className="flex flex-col items-center gap-1">
           <button
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 ${
-              liked ? 'bg-rose-500/20' : 'bg-black/30 backdrop-blur-sm border border-white/20'
+              liked
+                ? "bg-rose-500/20"
+                : "bg-black/30 backdrop-blur-sm border border-white/20"
             }`}
             onClick={toggleLike}
           >
-            <Heart className={`w-6 h-6 transition-all ${liked ? 'fill-rose-500 text-rose-500 scale-110' : 'text-white'}`} />
+            <Heart
+              className={`w-6 h-6 transition-all ${liked ? "fill-rose-500 text-rose-500 scale-110" : "text-white"}`}
+            />
           </button>
-          <span className="text-xs font-extrabold text-white drop-shadow">{likeCount.toLocaleString()}</span>
+          <span className="text-xs font-extrabold text-white drop-shadow">
+            {likeCount.toLocaleString()}
+          </span>
         </div>
 
         {/* Views */}
-        <div className="flex flex-col items-center gap-1">
+        {/* <div className="flex flex-col items-center gap-1">
           <div className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 flex items-center justify-center">
             <Eye className="w-5 h-5 text-white" />
           </div>
           <span className="text-xs font-extrabold text-white drop-shadow">
             {(video.views + (hasReportedView ? 1 : 0)).toLocaleString()}
           </span>
-        </div>
+        </div> */}
 
         {/* Mute/Unmute */}
         <div className="flex flex-col items-center gap-1">
@@ -177,19 +197,22 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
             className="w-12 h-12 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all active:scale-90"
             onClick={toggleMute}
           >
-            {isMuted
-              ? <VolumeX className="w-5 h-5 text-white" />
-              : <Volume2 className="w-5 h-5 text-white" />
-            }
+            {isMuted ? (
+              <VolumeX className="w-5 h-5 text-white" />
+            ) : (
+              <Volume2 className="w-5 h-5 text-white" />
+            )}
           </button>
           <span className="text-xs font-extrabold text-white drop-shadow">
-            {isMuted ? 'Tắt' : 'Bật'}
+            {isMuted ? "Tắt" : "Bật"}
           </span>
         </div>
 
         {/* Spinning music disc */}
         <div className="flex flex-col items-center gap-1 mt-1">
-          <div className={`w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-tr from-slate-800 via-purple-900 to-slate-900 flex items-center justify-center shadow-lg ${isPlaying ? 'animate-spin-slow' : ''}`}>
+          <div
+            className={`w-10 h-10 rounded-full border-2 border-white/30 bg-gradient-to-tr from-slate-800 via-purple-900 to-slate-900 flex items-center justify-center shadow-lg ${isPlaying ? "animate-spin-slow" : ""}`}
+          >
             <div className="w-4 h-4 rounded-full bg-white/80 flex items-center justify-center">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
             </div>
@@ -210,10 +233,16 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onView })
         {/* Creator handle */}
         <div className="flex items-center gap-2 mb-1.5">
           <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center text-[10px] font-black text-white shrink-0 shadow-sm">
-            {((video as any).author?.name || (video as any).author?.username || 'ES').substring(0, 2).toUpperCase()}
+            {(
+              (video as any).author?.name ||
+              (video as any).author?.username ||
+              "ES"
+            )
+              .substring(0, 2)
+              .toUpperCase()}
           </div>
           <span className="text-sm font-extrabold text-white drop-shadow">
-            @{(video as any).author?.username || 'EduShort'}
+            @{(video as any).author?.username || "EduShort"}
           </span>
         </div>
 
